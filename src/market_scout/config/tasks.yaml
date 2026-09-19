@@ -1,0 +1,115 @@
+screen_stocks_task:
+  description: >
+    Screen the S&P 500 using the Stock Screener tool.
+
+    Use the following screening parameters:
+    - Minimum return: {min_return}
+    - Maximum volatility: {max_volatility}
+    - Diversify across sectors: {diversify}
+
+    Pass these parameters to the Stock Screener tool.
+  expected_output: >
+    A ranked list of stocks that meet the quantitative
+    screening criteria.
+  agent: stock_researcher
+
+select_candidates_task:
+  description: >
+    Select {research_count} stocks from the quantitative screening
+    results for deeper company research.
+
+    The candidate pool contains stocks identified through two
+    independent quantitative screening paths:
+
+    1. Price signal:
+       Candidates selected using period return, volatility,
+       and Sharpe ratio.
+
+    2. Growth signal:
+       Candidates selected using annual revenue growth, calculated
+       from the company's two most recent annual revenue figures.
+
+    The Signal field indicates how each candidate entered the pool:
+    - Price
+    - Growth
+    - Price + Growth
+
+    Evaluate candidates across both signal types.
+
+    Consider:
+    - strength of the candidate's price metrics
+    - strength of annual revenue growth
+    - whether multiple quantitative signals support the candidate
+    - sector concentration among the candidates
+    - whether an unusually strong signal justifies selecting a
+      candidate despite weaker metrics in another area
+
+    Do not automatically favor Price candidates over Growth candidates,
+    or Growth candidates over Price candidates.
+
+    Diversification preference: {diversify}
+
+    If diversification is enabled, prefer candidates from different
+    sectors, but do not treat one-company-per-sector as a strict rule.
+    More than one company from the same sector may be selected when
+    their quantitative signals justify deeper research.
+
+    Preserve all quantitative metrics exactly as provided by the
+    screening task. Do not recalculate or modify them.
+  expected_output: >
+    A list of exactly {research_count} stocks selected for deeper
+    research.
+
+    For each selected stock include:
+    - ticker
+    - sector
+    - period return
+    - volatility
+    - Sharpe ratio
+    - annual revenue growth
+    - signal
+    - a concise selection reason explaining why the candidate
+      deserves deeper research relative to the candidate pool
+
+    Preserve all quantitative values exactly as provided by the
+    screening results.
+  agent: stock_researcher
+  context:
+    - screen_stocks_task
+
+research_companies_task:
+  description: >
+    Research the top {research_count} stock candidates identified
+    by the stock screening task.
+
+    For each company, investigate:
+    - recent earnings and financial performance
+    - important recent developments
+    - potential catalysts
+    - major business or industry risks
+    - factors that may explain recent stock performance
+
+    Use the Web Search tool to find current information.
+
+    Keep the research summary to 2-3 concise sentences.
+    Keep each catalyst and risk to 1-2 sentences.
+    Do not repeat quantitative metrics in the narrative unless
+    they are directly relevant to the analysis.
+  expected_output: >
+    Structured research for each of the top {research_count} companies including:
+    - ticker and company name
+    - quantitative metrics
+    - research summary
+    - recent developments
+    - potential catalysts
+    - major risks
+    - supporting sources
+
+    Keep catalysts, risks, summaries, and developments concise.
+    Do not include URLs inside narrative fields.
+
+    Put all supporting sources in the sources field,
+    with a title and URL for each source.
+  agent: company_researcher
+  context:
+    - select_candidates_task
