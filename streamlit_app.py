@@ -1,3 +1,5 @@
+import hmac
+
 import streamlit as st
 
 from market_scout.crew import MarketScout
@@ -30,6 +32,23 @@ st.markdown(
     """,
     unsafe_allow_html=True
 )
+
+
+# --------------------------------------------------
+# Access code
+# --------------------------------------------------
+# Anyone can look around, but running MarketScout (which calls the AI and
+# costs money) needs the access code. The code lives in Streamlit's secrets
+# as ACCESS_CODE, never in this file.
+
+def access_code_ok(code: str) -> bool:
+    try:
+        expected = st.secrets.get("ACCESS_CODE", "")
+    except Exception:  # no secrets set up yet: nobody can run it
+        expected = ""
+    if not expected or not code:
+        return False
+    return hmac.compare_digest(code.strip(), str(expected))
 
 
 # --------------------------------------------------
@@ -76,6 +95,18 @@ with st.sidebar:
     )
     st.divider()
 
+    # Ask for the code until it's been entered correctly once in this visit.
+    if not st.session_state.get("access_ok"):
+        code = st.text_input(
+            "Access code",
+            type="password",
+            help="Running MarketScout needs an access code."
+        )
+        if access_code_ok(code):
+            st.session_state.access_ok = True
+        elif code:
+            st.error("That code didn't work.")
+
     run = st.button(
         "Run MarketScout",
         type="primary",
@@ -118,7 +149,13 @@ with overview3:
 # Run MarketScout
 # --------------------------------------------------
 
-if run:
+if run and not st.session_state.get("access_ok"):
+
+    st.warning(
+        "Enter the access code in the sidebar to run MarketScout."
+    )
+
+elif run:
 
     inputs = {
         "min_return": min_return / 100,
